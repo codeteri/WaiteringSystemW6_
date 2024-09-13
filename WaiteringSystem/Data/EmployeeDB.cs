@@ -113,16 +113,55 @@ namespace WaiteringSystem.Data
                 }
             }
         }
-        private void FillRow(DataRow aRow, Employee anEmp)
+
+        // 2.3.1 Method header for FindRow
+        private int FindRow(Employee anEmp, string table)
+        {
+            // Declare variables
+            int rowIndex = 0;
+            DataRow myRow;
+            int returnValue = -1;
+
+            // Iterate over the rows of the specified table
+            foreach (DataRow myRow_loopVariable in dsMain.Tables[table].Rows)
+            {
+                // Assign loop variable to myRow
+                myRow = myRow_loopVariable;
+
+                // Check if the row state is not deleted
+                if (myRow.RowState != DataRowState.Deleted)
+                {
+                    // Check if the IDs match
+                    if (anEmp.ID == Convert.ToString(dsMain.Tables[table].Rows[rowIndex]["ID"]))
+                    {
+                        // Assign rowIndex to returnValue
+                        returnValue = rowIndex;
+                        break;
+                    }
+                }
+                // Increment rowIndex
+                rowIndex++;
+            }
+
+            // Return the found index
+            return returnValue;
+        }
+
+        private void FillRow(DataRow aRow, Employee anEmp, DB.DBOperation operation)
         {
             HeadWaiter headwaiter;
             Runner runner;
             Waiter waiter;
+
+            if ( operation == DB.DBOperation.Add)
+            {
                 aRow["ID"] = anEmp.ID;  //NOTE square brackets to indicate index of collections of fields in row.
                 aRow["EmpID"] = anEmp.EmployeeID;
+            }
                 aRow["Name"] = anEmp.Name;
                 aRow["Phone"] = anEmp.Telephone;
                 aRow["Role"] = (byte)anEmp.role.getRoleValue;
+
             //*** For each role add the specific data variables
             switch (anEmp.role.getRoleValue)
             {
@@ -147,31 +186,52 @@ namespace WaiteringSystem.Data
         #endregion
 
         #region Database Operations CRUD
-        public void DataSetChange(Employee anEmp)
+        // Method to handle changes to the dataset based on the CRUD operation
+        public void DataSetChange(Employee anEmp, string headWTable, string waiterTable, string runnerTable, DB.DBOperation operation)
         {
             DataRow aRow = null;
             string dataTable = table1;
+
+            // Determine the correct table based on employee role
             switch (anEmp.role.getRoleValue)
             {
                 case Role.RoleType.Headwaiter:
-                    dataTable = table1;
-                   // aRow = dsMain.Tables[dataTable].NewRow();
-                   // FillRow(aRow, anEmp);
-                   // //Add to the dataset
-                   //dsMain.Tables[dataTable].Rows.Add(aRow);
+                    dataTable = headWTable;
                     break;
                 case Role.RoleType.Waiter:
-                    dataTable = table2;
+                    dataTable = waiterTable;
                     break;
                 case Role.RoleType.Runner:
-                    dataTable = table3;
+                    dataTable = runnerTable;
                     break;
             }
-            aRow = dsMain.Tables[dataTable].NewRow();
-            FillRow(aRow, anEmp);
-            //Add to the dataset
-            dsMain.Tables[dataTable].Rows.Add(aRow);
+
+            // Handle the different database operations
+            switch (operation)
+            {
+                case DB.DBOperation.Add:
+                    aRow = dsMain.Tables[dataTable].NewRow();
+                    FillRow(aRow, anEmp, operation);
+                    dsMain.Tables[dataTable].Rows.Add(aRow);
+                    break;
+
+                case DB.DBOperation.Edit:
+                    aRow = dsMain.Tables[dataTable].Rows[FindRow(anEmp, dataTable)];
+                    FillRow(aRow, anEmp, operation);
+                    break;
+
+                case DB.DBOperation.Delete:
+                    // Find the row and delete it
+                    aRow = dsMain.Tables[dataTable].Rows[FindRow(anEmp, dataTable)];
+                    if (aRow != null)
+                    {
+                        aRow.Delete(); // Mark row for deletion in the dataset
+                    }
+                    break;
+            }
         }
+
+
         #endregion
 
         #region Build Parameters, Create Commands & Update database
@@ -239,10 +299,127 @@ namespace WaiteringSystem.Data
             Build_INSERT_Parameters(anEmp);
         }
 
+        private void Build_UPDATE_Parameters(Employee anEmp)
+        {
+            SqlParameter param = default(SqlParameter);
+
+            // Common parameters for all roles
+            param = new SqlParameter("@Name", SqlDbType.NVarChar, 100, "Name");
+            param.SourceVersion = DataRowVersion.Current;
+            daMain.UpdateCommand.Parameters.Add(param);
+
+            param = new SqlParameter("@Phone", SqlDbType.NVarChar, 15, "Phone");
+            param.SourceVersion = DataRowVersion.Current;
+            daMain.UpdateCommand.Parameters.Add(param);
+
+            param = new SqlParameter("@Role", SqlDbType.TinyInt, 1, "Role");
+            param.SourceVersion = DataRowVersion.Current;
+            daMain.UpdateCommand.Parameters.Add(param);
+
+            // Parameters specific to roles
+            switch (anEmp.role.getRoleValue)
+            {
+                case Role.RoleType.Headwaiter:
+                    param = new SqlParameter("@Salary", SqlDbType.Money, 8, "Salary");
+                    param.SourceVersion = DataRowVersion.Current;
+                    daMain.UpdateCommand.Parameters.Add(param);
+                    break;
+                case Role.RoleType.Waiter:
+                    param = new SqlParameter("@DayRate", SqlDbType.Money, 8, "DayRate");
+                    param.SourceVersion = DataRowVersion.Current;
+                    daMain.UpdateCommand.Parameters.Add(param);
+
+                    param = new SqlParameter("@NoOfShifts", SqlDbType.SmallInt, 4, "NoOfShifts");
+                    param.SourceVersion = DataRowVersion.Current;
+                    daMain.UpdateCommand.Parameters.Add(param);
+
+                    param = new SqlParameter("@Tips", SqlDbType.Money, 8, "Tips");
+                    param.SourceVersion = DataRowVersion.Current;
+                    daMain.UpdateCommand.Parameters.Add(param);
+                    break;
+                case Role.RoleType.Runner:
+                    param = new SqlParameter("@DayRate", SqlDbType.Money, 8, "DayRate");
+                    param.SourceVersion = DataRowVersion.Current;
+                    daMain.UpdateCommand.Parameters.Add(param);
+
+                    param = new SqlParameter("@NoOfShifts", SqlDbType.SmallInt, 4, "NoOfShifts");
+                    param.SourceVersion = DataRowVersion.Current;
+                    daMain.UpdateCommand.Parameters.Add(param);
+
+                    param = new SqlParameter("@Tips", SqlDbType.Money, 8, "Tips");
+                    param.SourceVersion = DataRowVersion.Current;
+                    daMain.UpdateCommand.Parameters.Add(param);
+                    break;
+            }
+
+            // Parameter for original ID (used in WHERE clause)
+            param = new SqlParameter("@Original_ID", SqlDbType.NVarChar, 15, "ID");
+            param.SourceVersion = DataRowVersion.Original;
+            daMain.UpdateCommand.Parameters.Add(param);
+        }
+
+
+        private void Create_UPDATE_Command(Employee anEmp)
+        {
+            switch (anEmp.role.getRoleValue)
+            {
+                case Role.RoleType.Headwaiter:
+                    daMain.UpdateCommand = new SqlCommand(
+                        "UPDATE HeadWaiter SET Name = @Name, Phone = @Phone, Role = @Role, Salary = @Salary " +
+                        "WHERE ID = @Original_ID", cnMain);
+                    break;
+                case Role.RoleType.Waiter:
+                    daMain.UpdateCommand = new SqlCommand(
+                        "UPDATE Waiter SET Name = @Name, Phone = @Phone, Role = @Role, DayRate = @DayRate, NoOfShifts = @NoOfShifts, Tips = @Tips " +
+                        "WHERE ID = @Original_ID", cnMain);
+                    break;
+                case Role.RoleType.Runner:
+                    daMain.UpdateCommand = new SqlCommand(
+                        "UPDATE Runner SET Name = @Name, Phone = @Phone, Role = @Role, DayRate = @DayRate, NoOfShifts = @NoOfShifts, Tips = @Tips " +
+                        "WHERE ID = @Original_ID", cnMain);
+                    break;
+            }
+
+            // Call the method to build the parameters for the update command
+            Build_UPDATE_Parameters(anEmp);
+        }
+
+        // Method to create the DELETE command for SQL
+        private void Create_DELETE_Command(Employee anEmp)
+        {
+            // Create the delete command based on the employee's role
+            switch (anEmp.role.getRoleValue)
+            {
+                case Role.RoleType.Headwaiter:
+                    daMain.DeleteCommand = new SqlCommand("DELETE FROM HeadWaiter WHERE ID = @Original_ID", cnMain);
+                    break;
+
+                case Role.RoleType.Waiter:
+                    daMain.DeleteCommand = new SqlCommand("DELETE FROM Waiter WHERE ID = @Original_ID", cnMain);
+                    break;
+
+                case Role.RoleType.Runner:
+                    daMain.DeleteCommand = new SqlCommand("DELETE FROM Runner WHERE ID = @Original_ID", cnMain);
+                    break;
+            }
+
+            // Create the parameter for the DELETE command
+            SqlParameter param = new SqlParameter("@Original_ID", SqlDbType.NVarChar, 15, "ID");
+            param.SourceVersion = DataRowVersion.Original;
+            daMain.DeleteCommand.Parameters.Add(param);
+        }
+
+
+
         public bool UpdateDataSource(Employee anEmp)
         {
             bool success = true;
+
+            // Create INSERT Command for the employee
             Create_INSERT_Command(anEmp);
+            // Create UPDATE Command for the employee
+            Create_UPDATE_Command(anEmp);
+
             switch (anEmp.role.getRoleValue)
             {
                 case Role.RoleType.Headwaiter:
@@ -255,6 +432,7 @@ namespace WaiteringSystem.Data
                     success = UpdateDataSource(sqlLocal3, table3);
                     break;
             }
+
             return success;
         }
 

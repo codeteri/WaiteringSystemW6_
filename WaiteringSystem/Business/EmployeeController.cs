@@ -36,11 +36,36 @@ namespace WaiteringSystem.Business
         #endregion
 
         #region Database Communication.
-        public void DataMaintenance(Employee anEmp)
+        // Method to handle maintenance operations on the employee list
+        public void DataMaintenance(Employee anEmp, DB.DBOperation operation)
         {
-            //perform a given database operation to the dataset in meory; 
-            employeeDB.DataSetChange(anEmp);
-            employees.Add(anEmp);
+            int index = 0;
+
+            switch (operation)
+            {
+                case DB.DBOperation.Add:
+                    employees.Add(anEmp);
+                    break;
+
+                case DB.DBOperation.Edit:
+                    index = FindIndex(anEmp);
+                    if (index >= 0)
+                    {
+                        employees[index] = anEmp;
+                    }
+                    break;
+
+                case DB.DBOperation.Delete:
+                    index = FindIndex(anEmp);
+                    if (index >= 0)
+                    {
+                        employees.RemoveAt(index);
+                    }
+                    break;
+            }
+
+            // Update the dataset accordingly
+            employeeDB.DataSetChange(anEmp, "HeadWaiter", "Waiter", "Runner", operation);
         }
 
         //***Commit the changes to the database
@@ -84,6 +109,25 @@ namespace WaiteringSystem.Business
             // Return the found employee or null if not found
             return found ? employees[index] : null;
         }
+
+        // 3.1.1 Method header for FindIndex
+        private int FindIndex(Employee anEmp)
+        {
+            int counter = 0;
+            bool found = (anEmp.ID == employees[counter].ID);
+
+            // 3.1.2 Loop until the employee is found or the end of the collection is reached
+            while (!found && counter < employees.Count - 1)
+            {
+                // 3.1.3 Increment counter
+                counter++;
+                found = (anEmp.ID == employees[counter].ID);
+            }
+
+            // Return the index if found; otherwise, -1
+            return found ? counter : -1;
+        }
+
 
         #endregion
 

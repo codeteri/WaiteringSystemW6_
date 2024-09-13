@@ -131,6 +131,7 @@ namespace WaiteringSystem.Presentation
             this.submitButton.TabIndex = 9;
             this.submitButton.Text = "Submit";
             this.submitButton.UseVisualStyleBackColor = true;
+            this.submitButton.Click += new System.EventHandler(this.submitButton_Click);
             // 
             // button3
             // 
@@ -151,6 +152,7 @@ namespace WaiteringSystem.Presentation
             this.editButton.Size = new System.Drawing.Size(53, 41);
             this.editButton.TabIndex = 11;
             this.editButton.UseVisualStyleBackColor = true;
+            this.editButton.Click += new System.EventHandler(this.editButton_Click);
             // 
             // label1
             // 

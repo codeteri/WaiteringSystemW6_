@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using WaiteringSystem.Business;
+using WaiteringSystem.Data;
 
 namespace WaiteringSystem.Presentation
 
@@ -66,9 +67,11 @@ namespace WaiteringSystem.Presentation
         {
 
             InitializeComponent();
+            employeeController = empController;
             this.Load += EmployeeListingForm_Load;
             this.Activated += EmployeeListingForm_Activated;
-
+            this.FormClosed += EmployeeListingForm_FormClosed;
+            state = FormStates.View;
         }
 
 
@@ -158,7 +161,6 @@ namespace WaiteringSystem.Presentation
             HeadWaiter headW;
             Waiter waiter;
             Runner runner;
-            employees = null;
             employeeListView.Clear();
 
             employeeListView.Columns.Insert(0, "ID", 120, HorizontalAlignment.Left);
@@ -315,6 +317,31 @@ namespace WaiteringSystem.Presentation
         private void empIdlabel_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void editButton_Click(object sender, EventArgs e)
+        {
+            state = FormStates.Edit; // Set the form state to Edit
+            EnableEntries(true); // Enable form controls for editing
+        }
+
+        private void submitButton_Click(object sender, EventArgs e)
+        {
+            PopulateTextBoxes(employee); // Populate the current employee object from form inputs
+
+            if (state == FormStates.Edit)
+            {
+                employeeController.DataMaintenance(employee, DB.DBOperation.Edit);
+            }
+            else if (state == FormStates.Add)
+            {
+                employeeController.DataMaintenance(employee, DB.DBOperation.Add);
+            }
+            
+            // FinalizeChanges(); // Finalize and apply changes
+            ClearAll(); // Clear all form input fields
+            state = FormStates.View; // Set form state back to View
+            EnableEntries(false); // Disable form controls for editing
         }
     }
 }
